@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Y1</title>
+    <style>
+    * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+        font-family: Arial, sans-serif;
+    }
+
+    body, html {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        background-color: #121212; /* Dark background */
+        color: #e0e0e0; /* Light text */
+        overflow: hidden; /* Prevent scroll */
+    }
+
+    .container {
+        width: 100%;
+        height: 100%;
+        max-width: none;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        background: #1e1e1e; /* Dark UI */
+    }
+
+    h1 {
+        text-align: center;
+        padding: 10px;
+        background: #222;
+        margin-bottom: 5px;
+        font-size: 1.5rem;
+    }
+
+    /* #user-setup {
+        display: flex;
+        justify-content: center;
+        padding: 10px;
+        gap: 10px;
+    } */
+
+
+    #user-setup {
+    display: flex;
+    justify-content: center;
+    padding: 10px;
+    gap: 10px;
+    flex-wrap: wrap; /* Allows items to move to the next line if needed */
+    }
+
+    input, button {
+        padding: 8px; /* Reduce padding slightly */
+        font-size: 0.9rem; /* Slightly smaller text */
+    }
+
+    @media (max-width: 600px) { /* Apply changes only on small screens */
+        #user-setup {
+            flex-direction: column; /* Stack elements on mobile */
+            align-items: center; /* Center everything */
+            gap: 5px;
+        }
+
+        input, button, label {
+            font-size: 0.8rem; /* Make text slightly smaller */
+        }
+
+        input {
+            width: 90%; /* Make inputs take more space */
+            max-width: 250px; /* Prevent being too wide */
+        }
+
+        button {
+            width: 50%; /* Keep button smaller */
+            max-width: 200px;
+        }
+    }
+
+
+
+
+    input, button {
+        padding: 10px;
+        font-size: 1rem;
+        border: 1px solid #555;
+        border-radius: 5px;
+        background: #2b2b2b;
+        color: #e0e0e0;
+    }
+
+    button {
+        background-color: #007bff;
+        color: white;
+        cursor: pointer;
+        border: none;
+    }
+
+    button:hover {
+        background-color: #0056b3;
+    }
+
+    #messages {
+        flex-grow: 1; /* Make messages take all available space */
+        list-style: none;
+        padding: 10px;
+        background: #1a1a1a;
+        overflow-y: auto;
+        border-top: 1px solid #333;
+        border-bottom: 1px solid #333;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    #messages li {
+        padding: 10px;
+        border-radius: 10px;
+        color: white;
+        max-width: 50%; /* Set width for both sender and receiver messages */
+        word-wrap: break-word;
+        margin-bottom: 10px;
+        display: flex;
+        justify-content: flex-start;
+    }
+
+    .my-message {
+        background: #28a745;
+        align-self: flex-end; /* Align the sender's message to the right */
+        text-align: right;
+    }
+
+    .other-message {
+        background: #444;
+        align-self: flex-start; /* Align the other's message to the left */
+        text-align: left;
+    }
+
+    #message-form {
+        display: flex;
+        padding: 10px;
+        gap: 10px;
+        background: #222;
+    }
+
+    #input {
+        flex: 1;
+    }
+
+    </style>
+</head>
+<body>
+    <div class="container" id="hi">
+        <h1>Y1</h1>
+
+        <div id="user-setup" class="tanay">
+            <input id="username" type="text" placeholder="Enter your name">
+            <label for="male">Male</label>
+            <input type="radio" name="gender" value="male" id="male">
+            <label for="female">Female</label>
+            <input type="radio" name="gender" value="female" id="female">
+            <button id="joinButton">Join</button>
+        </div>
+
+        <ul id="messages"></ul>
+
+        <form id="message-form">
+            <input id="input" autocomplete="off" placeholder="Type a message..." disabled>
+            <button id="sendButton" disabled>Send</button>
+        </form>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        const form = document.getElementById('message-form');
+        const input = document.getElementById('input');
+        const messages = document.getElementById('messages');
+        const usernameInput = document.getElementById('username');
+        const joinButton = document.getElementById('joinButton');
+        const sendButton = document.getElementById('sendButton');
+        const contain=document.getElementById('user-setup')
+        
+        let username = '';
+        let userGender = '';  // Variable to store the gender of the user
+
+        // Prevent form from reloading page
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+            if (input.value.trim()) {
+                const message = input.value.trim();
+
+                // Display the message for the sender instantly
+                addMessage(username, message, true);
+
+                // Send message to others
+                socket.emit('chat message', { username: username, message: message, gender: userGender });
+
+                input.value = '';
+            }
+        });
+
+        // Handle user joining chat
+        joinButton.onclick = function () {
+            username = usernameInput.value.trim();
+            userGender = document.querySelector('input[name="gender"]:checked').value;  // Get gender choice
+
+            if (username && userGender) {
+                socket.emit('user joined', { username, gender: userGender });
+                usernameInput.disabled = true;
+                joinButton.disabled = true;
+                input.disabled = false;
+                sendButton.disabled = false;
+                if(socket.connected){
+                    contain.remove()
+
+                }
+            } else {
+                alert("Enter a valid name and choose gender.");
+            }
+        };
+
+        // Display messages from other users
+        socket.on('chat message', function (data) {
+            if (data.username !== username) {  // Avoid showing sender's message twice
+                addMessage(data.username, data.message, false, data.gender);
+            }
+        });
+
+        function addMessage(sender, message, isMe, gender) {
+            const li = document.createElement('li');
+            const senderName = document.createElement('span');
+            senderName.textContent = `${sender}: `;
+            senderName.style.fontWeight = 'bold';
+            li.appendChild(senderName);
+            li.appendChild(document.createTextNode(message));
+
+            // Set colors based on gender
+            if (isMe) {
+                li.classList.add('my-message');
+                li.style.background = '#28a745';  // Green for own messages
+            } else {
+                li.classList.add('other-message');
+                // Use gender for others' messages
+                if (gender === 'female') {
+                    li.style.background = '#ff69b4';  // Pink for female sender
+                } else {
+                    li.style.background = '#87cefa';  // Sky blue for male sender
+                }
+            }
+
+            messages.appendChild(li);
+            messages.scrollTop = messages.scrollHeight;
+        }
+
+    </script>
+</body>
+</html>
