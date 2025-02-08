@@ -20,21 +20,10 @@ io.on('connection', (socket) => {
         socket.gender = data.gender; // Save gender info to the socket instance
     });
 
-    // Handle incoming chat messages
-    // socket.on('chat message', (data) => {
-    //     console.log(`${data.username}: ${data.message}`);  // Add logging for debugging
-    //     io.emit('chat message', { 
-    //         username: data.username, 
-    //         message: data.message,
-    //         gender: data.gender // Send gender info with the message
-    //     });
-    // });
-
 
     socket.on('chat message', (data) => {
         io.emit('chat message', { username: data.username, message: data.message, gender: data.gender });
     });
-    
 
 
     // Handle user disconnect
